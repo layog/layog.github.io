@@ -1,0 +1,100 @@
+/* Global settings */
+body {
+    background-color: #FCE9E5;
+}
+
+.link, a {
+    color: #EE6F57;
+}
+
+.link:hover, a:hover {
+    color: #93240F;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+p {
+    font-size: 1.1rem;
+}
+
+/* Navbar settings */
+.navbar {
+    min-height: 80px;
+    background-color: #EE6F57;
+    color: #00334E;
+}
+
+.nav-link, .navbar-brand {
+    color: #00334E;
+    font-size: 1.3rem;
+}
+
+.navbar-brand:hover, .nav-link:hover {
+    color: #FFF;
+}
+
+/* Article card settings */
+.card {
+    border: 0;
+    background-color: inherit;
+}
+
+.card-title {
+    color: #393B44;
+}
+
+.card-title:hover {
+    text-decoration: underline;
+}
+
+/* Flatten taglist settings */
+ul.taglist {
+    display: inline;
+    list-style: none;
+    padding-left: 0;
+}
+
+ul.taglist li {
+    display: inline;
+}
+
+ul.taglist li:after {
+    content: ", ";
+}
+
+ul.taglist li:last-child:after {
+    content: "";
+}
+
+ul.taglist:before {
+    content: "Tags: ";
+    font-weight: bold;
+}
+
+/* Article specific settings */
+.code {
+    background-color: #fef6f5;
+}
+
+span.reference {
+    font-size: 80%;
+    vertical-align: super;
+}
+
+p.authors {
+    display: none;
+}
+
+/* Tags on tags page setting */
+ul.alltags {
+    list-style: none;
+}
+
+ul.alltags li {
+    font-size: 1.3rem;
+    margin-top: 1.3rem;
+}
+
+.tag {
+    color: #EE6F57;
+}

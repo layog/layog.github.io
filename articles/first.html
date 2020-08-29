@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <!-- Required meta tags -->
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+        <!-- Bootstrap CSS -->
+        <link rel="stylesheet" href="/vendor/css/bootstrap.min.css">
+        <link rel="stylesheet" href="/css/style.css">
+        <script src="/js/script.js" defer></script>
+
+        <title>Layog's Blog</title>
+    </head>
+    <body>
+        <!-- Navigation -->
+        <nav class="navbar navbar-expand">
+            <div class="container">
+                <!-- notice position-absolute on the brand which allows it to center-->
+                <a href="/"><span class="navbar-brand">Ankit Goyal</span></a>
+                <div>
+                    <ul class="navbar-nav ml-auto">
+                        <li class="nav-item">
+                            <a class="nav-link" href="/tags.html">Tags</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/about.html">About</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+
+        <div class="container article mt-4">
+            <h1>Value categories and Copy Elision</h1>
+            <ul class="taglist">
+                <li><a href="#">Python</a></li>
+                <li><a href="#">C++</a></li>
+                <li><a href="#">Copy Elision</a></li>
+            </ul>
+            <p><b>Published Date:</b> <time datetime="2020-08-04"></time></p>
+
+            <p class="summary">Lorem Ipsum is simply dummy text of the printing and
+            typesetting industry. Lorem Ipsum has been the
+            industry's standard dummy text ever since the 1500s, when an
+            unknown printer took a galley of type and scrambled it to
+            make a type specimen book. It has survived not only five
+            centuries, but also the leap into electronic typesetting,
+            remaining essentially unchanged. It was popularised in the 1960s
+            with the release of Letraset sheets containing Lorem Ipsum passages,
+            and more recently with desktop publishing software like Aldus PageMaker
+            including versions of Lorem Ipsum. Sample text<span class="reference
+                link">[1]</span> inside card</p>
+
+            <!-- HTML generated using hilite.me --><div class="code" style="overflow:auto;width:auto;border:solid gray;border-width:.1em .1em .1em .8em;padding:.2em .6em;"><table><tr><td><pre style="margin: 0; line-height: 125%">1
+2
+3
+4
+5
+6
+7</pre></td><td><pre style="margin: 0; line-height: 125%"><span style="color: #009999">#include &lt;iostream&gt;</span>
+
+<span style="color: #007788; font-weight: bold">int</span> <span style="color: #CC00FF">main</span>() {
+    unique_ptr<span style="color: #555555">&lt;</span>T<span style="color: #555555">&gt;</span> a;
+    a <span style="color: #555555">=</span> make_unique(<span style="color: #006699; font-weight: bold">new</span> T());
+    std<span style="color: #555555">::</span>cout <span style="color: #555555">&lt;&lt;</span> <span style="color: #CC3300">&quot;Sample&quot;</span> <span style="color: #555555">&lt;&lt;</span> std<span style="color: #555555">::</span>endl;
+}
+</pre></td></tr></table></div>
+
+            <h2 class="section">Another section that we can do somethign to</h2>
+            <p>Do ra de r do</p>
+
+            <div class="references section">
+                <h2>References</h2>
+                <ol>
+                    <li><a href="https://google.com">Sample reference<p class="authors">Author1, Author2</p></a></li>
+                    <li><a href="https://google2.com">Sample reference2<p class="authors">Author1, Author2</p></a></li>
+                </ol>
+            </div>
+        </div>
+    </body>
+</html>
