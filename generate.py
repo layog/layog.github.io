@@ -26,7 +26,7 @@ ARTICLE_CARD = """
 
 TAGS_PAGE = """
 <div class="container mt-4">
-    <h3>Tags</h3>
+    <h2>Tags</h2>
     <ul class="alltags">
         {tags}
     </ul>
@@ -46,14 +46,14 @@ def parse_article(article_path):
   article_soup = soup.find('div', attrs={'class': 'article'})
   assert article_soup, "Failed to find the article class"
 
-  title = article_soup.find('h1')
+  title = article_soup.find('h2')
   assert(title)
   title = title.get_text()
 
   taglist = article_soup.find(attrs={'class': 'taglist'})
   tags = []
   for tag in taglist.find_all('li'):
-    tags.append(tag.get_text())
+    tags.append(tag.get_text().strip())
 
   date_str = article_soup.find('time').attrs.get('datetime', '')
   assert(date_str)
@@ -111,7 +111,7 @@ def write(html, file_path):
 def build_tag_page(tag, articles):
   cards = build_cards(articles)
   container = cards.find('div', attrs={'class': 'container'})
-  tag_heading = BeautifulSoup(f'<h3 class="tag mt-4">Tag: {tag}</h3>', 'html.parser')
+  tag_heading = BeautifulSoup(f'<h2 class="tag mt-4">Tag: {tag}</h2>', 'html.parser')
   container.insert(0, tag_heading)
   write(cards.prettify(), f'{SRC_DIR}/tag/{tag.lower()}.html')
 
