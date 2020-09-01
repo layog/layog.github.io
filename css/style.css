@@ -17,6 +17,11 @@ p {
     font-size: 1.1rem;
 }
 
+::selection {
+    background-color: #EE6F57;
+    color: #FFF;
+}
+
 /* Navbar settings */
 .navbar {
     min-height: 80px;
