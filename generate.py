@@ -96,21 +96,24 @@ def build_cards(articles):
   return built
 
 
-def build_tag_page(tag, articles):
+def write(html, file_path):
   with open(f'{TEMPLATES_DIR}/head.html', 'r') as f:
     head = f.read()
 
   with open(f'{TEMPLATES_DIR}/tail.html', 'r') as f:
     tail = f.read()
 
+  full_html = BeautifulSoup(head + html + tail, 'html.parser')
+  with open(file_path, 'w') as f:
+    f.write(full_html.prettify())
+
+
+def build_tag_page(tag, articles):
   cards = build_cards(articles)
   container = cards.find('div', attrs={'class': 'container'})
   tag_heading = BeautifulSoup(f'<h3 class="tag mt-4">Tag: {tag}</h3>', 'html.parser')
   container.insert(0, tag_heading)
-
-  output = BeautifulSoup(head + cards.prettify() + tail, 'html.parser')
-  with open(f'{SRC_DIR}/tag/{tag.lower()}.html', 'w') as f:
-    f.write(output.prettify())
+  write(cards.prettify(), f'{SRC_DIR}/tag/{tag.lower()}.html')
 
 
 def build_tags_pages(articles):
@@ -137,31 +140,14 @@ def build_tags_pages(articles):
     soup = BeautifulSoup(f'<li><a href="/tag/{tag}.html">{rep} ({count})</a></li>', 'html.parser')
     tags.insert(i, soup)
 
-  with open(f'{TEMPLATES_DIR}/head.html', 'r') as f:
-    head = f.read()
-
-  with open(f'{TEMPLATES_DIR}/tail.html', 'r') as f:
-    tail = f.read()
-
-  soup = BeautifulSoup(head + TAGS_PAGE.format(tags=tags.prettify()) + tail, 'html.parser')
-  with open(f'{SRC_DIR}/tags.html', 'w') as f:
-    f.write(soup.prettify())
+  write(TAGS_PAGE.format(tags=tags.prettify()), f'{SRC_DIR}/tags.html')
 
 
 def build_home_page(articles):
-  with open(f'{TEMPLATES_DIR}/head.html', 'r') as f:
-    head = f.read()
-
-  with open(f'{TEMPLATES_DIR}/tail.html', 'r') as f:
-    tail = f.read()
-
-  home = BeautifulSoup(head + build_cards(articles).prettify() + tail,
-      'html.parser')
-
-  first_card = home.find('div', attrs={'class': 'card'})
+  cards = build_cards(articles)
+  first_card = cards.find('div', attrs={'class': 'card'})
   first_card.attrs['class'].append('mt-4')
-  with open(f'{SRC_DIR}/index.html', 'w') as f:
-    f.write(home.prettify())
+  write(cards.prettify(), f'{SRC_DIR}/index.html')
 
 
 def main():
