@@ -22,7 +22,7 @@ function addTagLinks() {
         let tag = tags[i];
         let a = tag.querySelector('a');
         if (a) {
-            a.href = "/tag/" + a.textContent.toLowerCase() + ".html";
+            a.href = "/tag/" + a.textContent.trim().toLowerCase() + ".html";
         }
     }
 }
