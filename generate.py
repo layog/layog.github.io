@@ -150,10 +150,32 @@ def build_home_page(articles):
   write(cards.prettify(), f'{SRC_DIR}/index.html')
 
 
+def update_dates_in_articles(articles):
+  for article in articles:
+    article_file_name = article.path.split('/')[-1]
+    article_file_path = f'{SRC_DIR}/articles/{article_file_name}'
+
+    with open(article_file_path, 'r') as f:
+      soup = BeautifulSoup(f.read(), 'html.parser')
+
+    for date_tag in soup.find_all('time'):
+      date_str = date_tag.attrs.get('datetime', '')
+      assert(date_str)
+      year, month, day = map(int, date_str.split('-'))
+      date = datetime.date(year, month, day)
+
+      date_tag.clear()
+      date_tag.insert(0, date.strftime('%B %d, %Y'))
+
+    with open(article_file_path, 'w') as f:
+      f.write(soup.prettify())
+
+
 def main():
   articles = read_articles()
   build_home_page(articles)
   build_tags_pages(articles)
+  update_dates_in_articles(articles)
 
 
 if __name__ == '__main__':
