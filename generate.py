@@ -131,7 +131,7 @@ def build_tags_pages(articles):
     build_tag_page(representations[0], articles)
 
   lower_tags = list(all_tags.keys())
-  lower_tags.sort(key=lambda x: len(all_tags[x][1]))
+  lower_tags.sort(key=lambda x: (len(all_tags[x][1]), x))
 
   tags = BeautifulSoup('', 'html.parser')
   for i, tag in enumerate(lower_tags):
