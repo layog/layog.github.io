@@ -9,7 +9,8 @@ function populateReferences() {
 }
 
 function handleReferenceClick() {
-    referenceNumber = parseInt(this.textContent[1]);
+    let content = this.textContent.trim();
+    let referenceNumber = parseInt(content.slice(1, -1)) - 1;
     if (referenceNumber >= references.length) {
         return;
     }
