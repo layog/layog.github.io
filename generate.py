@@ -17,7 +17,7 @@ ARTICLE_CARD = """
             <ul class="taglist">
               {tags}
             </ul>
-            <p><b>Published Date:</b> <time datetime="{date}">{readable_date}</time></p>
+            <div><b>Published Date:</b> <time datetime="{date}">{readable_date}</time></div>
             <p>{summary}</p>
         </div>
     </div>
