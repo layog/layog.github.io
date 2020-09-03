@@ -61,6 +61,8 @@ def parse_article(article_path):
   date = datetime.date(year, month, day)
 
   summary = article_soup.find(attrs={'class': 'summary'})
+  for tag in summary.find_all(attrs={'class': 'sup-reference'}):
+    tag.decompose()
   for tag in summary.find_all(attrs={'class': 'reference'}):
     tag.decompose()
 
@@ -96,7 +98,7 @@ def build_cards(articles):
   return built
 
 
-def write(html, file_path):
+def write(html, title, file_path):
   with open(f'{TEMPLATES_DIR}/head.html', 'r') as f:
     head = f.read()
 
@@ -104,16 +106,23 @@ def write(html, file_path):
     tail = f.read()
 
   full_html = BeautifulSoup(head + html + tail, 'html.parser')
+  title_html = full_html.find('title')
+  title_html.clear()
+  title_html.insert(0, title)
   with open(file_path, 'w') as f:
     f.write(full_html.prettify())
 
 
 def build_tag_page(tag, articles):
   cards = build_cards(articles)
+  heading = f'Tag: {tag}'
+
   container = cards.find('div', attrs={'class': 'container'})
-  tag_heading = BeautifulSoup(f'<h2 class="tag mt-4">Tag: {tag}</h2>', 'html.parser')
+  tag_heading = BeautifulSoup(f'<h2 class="tag mt-4">{heading}</h2>', 'html.parser')
   container.insert(0, tag_heading)
-  write(cards.prettify(), f'{SRC_DIR}/tag/{tag.lower()}.html')
+
+  write(cards.prettify(), f"{heading} | Layog's blog",
+      f'{SRC_DIR}/tag/{tag.lower()}.html')
 
 
 def build_tags_pages(articles):
@@ -140,14 +149,15 @@ def build_tags_pages(articles):
     soup = BeautifulSoup(f'<li><a href="/tag/{tag}.html">{rep} ({count})</a></li>', 'html.parser')
     tags.insert(i, soup)
 
-  write(TAGS_PAGE.format(tags=tags.prettify()), f'{SRC_DIR}/tags.html')
+  write(TAGS_PAGE.format(tags=tags.prettify()), "Tags | Layog's blog",
+      f'{SRC_DIR}/tags.html')
 
 
 def build_home_page(articles):
   cards = build_cards(articles)
   first_card = cards.find('div', attrs={'class': 'card'})
   first_card.attrs['class'].append('mt-4')
-  write(cards.prettify(), f'{SRC_DIR}/index.html')
+  write(cards.prettify(), "Layog's blog", f'{SRC_DIR}/index.html')
 
 
 def update_dates_in_articles(articles):

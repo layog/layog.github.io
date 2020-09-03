@@ -1,0 +1,1375 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <!-- Required meta tags -->
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1, shrink-to-fit=no" name="viewport"/>
+  <!-- Bootstrap CSS -->
+  <link href="/vendor/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="/css/style.css" rel="stylesheet"/>
+  <script defer="" src="/js/script.js">
+  </script>
+  <title>
+   Value categories and copy elision | Layog's Blog
+  </title>
+ </head>
+ <body>
+  <!-- Navigation -->
+  <nav class="navbar navbar-expand">
+   <div class="container">
+    <!-- notice position-absolute on the brand which allows it to center-->
+    <a href="/">
+     <span class="navbar-brand">
+      Ankit Goyal
+     </span>
+    </a>
+    <div>
+     <ul class="navbar-nav ml-auto">
+      <li class="nav-item">
+       <a class="nav-link" href="/tags.html">
+        Tags
+       </a>
+      </li>
+      <li class="nav-item">
+       <a class="nav-link" href="/about.html">
+        About
+       </a>
+      </li>
+     </ul>
+    </div>
+   </div>
+  </nav>
+  <div class="container article mt-4">
+   <h2>
+    Value categories and copy elision
+   </h2>
+   <ul class="taglist">
+    <li>
+     <a href="#">
+      C++
+     </a>
+    </li>
+    <li>
+     <a href="#">
+      Value categories
+     </a>
+    </li>
+    <li>
+     <a href="#">
+      Copy elision
+     </a>
+    </li>
+    <li>
+     <a href="#">
+      RVO
+     </a>
+    </li>
+    <li>
+     <a href="#">
+      const
+     </a>
+    </li>
+   </ul>
+   <div>
+    <b>
+     Published Date:
+    </b>
+    <time datetime="2020-09-02">
+     September 02, 2020
+    </time>
+   </div>
+   <p class="summary">
+    The goal of this article is to understand the nuances of value categories
+    and copy elision (aka RVO/NRVO). A deeper understanding of how C++ handles
+    variables will lead to better (and correct) use of const, lvalue and
+    rvalue.
+   </p>
+   <div id="toc">
+   </div>
+   <div class="section">
+    <h3 class="section-title">
+     const
+    </h3>
+    <p>
+     Before we talk about anything, let's clear the confusion around
+     <span class="code">const</span>
+     <span class="sup-reference link">
+      [1]
+     </span>
+     <span class="sup-reference link">
+      [2]
+     </span>
+     .
+    </p>
+    <p>
+     What is
+     <span class="code">const</span>
+     ? This is just a keyword that tells
+   the compiler, "Hey this thing should never change during the course of the
+   execution." But is that all? Consider these
+   different uses of
+     <span class="code">const</span>
+     -
+    </p>
+    <div class="block-code">
+     <pre style="margin: 0; line-height: 125%"><span style="color: #006699; font-weight: bold">class</span> <span style="color: #00AA88; font-weight: bold">X</span> {
+<span style="color: #9999FF">public:</span>
+    <span style="color: #007788; font-weight: bold">int</span> f() <span style="color: #006699; font-weight: bold">const</span> {...}
+    <span style="color: #006699; font-weight: bold">const</span> <span style="color: #007788; font-weight: bold">int</span> g() <span style="color: #006699; font-weight: bold">const</span> {...}
+    <span style="color: #007788; font-weight: bold">int</span> <span style="color: #006699; font-weight: bold">const</span> h() <span style="color: #006699; font-weight: bold">const</span> {...}
+    <span style="color: #007788; font-weight: bold">int</span> i() {...}
+<span style="color: #9999FF">private:</span>
+    <span style="color: #007788; font-weight: bold">int</span> x <span style="color: #555555">=</span> <span style="color: #FF6600">1</span>;
+}
+
+<span style="color: #007788; font-weight: bold">int</span> main() {
+    <span style="color: #006699; font-weight: bold">const</span> X x;
+    x.i();  <span style="color: #0099FF; font-style: italic">// Error: Cannot call a non-const member on a const object</span>
+}
+</pre>
+    </div>
+    <p>
+     How about a
+     <span class="code">const</span>
+     on a member function? Member
+functions can be
+     <span class="code">const-qualified</span>
+     which means that they
+can't modify any of the member variable of the class during the execution.
+This has certain implications, the chief among those being that you cannot call
+a
+     <span class="code">non-const</span>
+     member function on a
+     <span class="code">const</span>
+     object.
+    </p>
+    <div class="aside">
+     Note: You can actually change some of the member variable in
+    a const member function if they are declared
+     <span class="code">mutable</span>
+     .
+     <span class="sup-reference link">
+      [3]
+     </span>
+    </div>
+    <p>
+     But, who does a
+     <span class="code">const</span>
+     belong to? Say in the example
+     <span class="code">int * const p</span>
+     , is
+     <span class="code">p</span>
+     a
+pointer to a
+     <span class="code">const int</span>
+     , or is
+     <span class="code">p</span>
+     a
+     <span class="code">const pointer</span>
+     to an
+     <span class="code">int</span>
+     ? The former says that we cannot change the value pointed
+by
+     <span class="code">p</span>
+     and the latter says that we cannot change what
+     <span class="code">p</span>
+     points to. The thing to note here is that
+     <span class="code">const</span>
+     always looks to its left. So in this case
+     <span class="code">const</span>
+     looks to
+     <span class="code">int *</span>
+     and says yup,
+I am a
+     <span class="code">const</span>
+     to
+     <span class="code">int *</span>
+     . So,
+latter is the case this time.
+    </p>
+    <p>
+     Then what about
+     <span class="code">const int * const p</span>
+     . Ah, this you
+     should never use
+     <span class="sup-reference link">
+      [4]
+     </span>
+     (like in the above member function
+     <span class="code">g()</span>
+     as well). But, what actually happens is,
+     <span class="code">const</span>
+     looks to its left finds nothing and says "Hmm,
+I'll compromise and go with my right". So this is equivalent to
+     <span class="code">int const * const p</span>
+     which should now be clear that "p is
+a const pointer to a const integer".
+    </p>
+    <div class="aside">
+     Aside: This debate of where to put
+     <span class="code">const</span>
+     is known as "East const v/s Const
+    west".
+     <span class="sup-reference link">
+      [4]
+     </span>
+    </div>
+    <p>
+     Ok, then what about
+     <span class="code">const int const * const p</span>
+     ? At this
+point, are you thinking you wanna throw another
+     <span class="code">const</span>
+     in there? Joke aside, this is actually an error at which compiler should say
+that you are using a duplicate const.
+
+So, finally the rule of thumb is
+     <span class="sup-reference link">
+      [5]
+     </span>
+     -
+    </p>
+    <div class="quote">
+     <span class="code">const</span>
+     modifies what is on its
+       left. Unless there is nothing on its left, in which case it modifies
+       what’s on its right.  If you consistently place const after what it
+   modifies, the rule becomes much simpler:
+     <span class="code">const</span>
+     modifies what is on its left.
+    </div>
+   </div>
+   <div class="section">
+    <h3 class="section-title">
+     Value categories
+    </h3>
+    <p>
+     There have been many articles written on this topic, each slightly wrong from
+the others, or slightly more technical to be comprehensible. This is another
+attempt at slightly less wrong and slightly less technical, but still probably
+incomprehensible to some.
+
+The most common way to define value categories
+     <span class="sup-reference link">
+      [6]
+     </span>
+     -
+    </p>
+    <div class="quote">
+     An lvalue (locator value) represents an object that occupies some
+    identifiable location in memory (i.e. has an address). rvalues are defined
+    by exclusion, by saying that every expression is either an lvalue or an
+    rvalue.
+    </div>
+    <p>
+     Alright, that's it, seems easy. If it can have an address, then it's lvalue
+otherwise it's not. This enables the reference return types as well as they are
+lvalues, ex -
+    </p>
+    <div class="block-code">
+     <pre style="margin: 0; line-height: 125%"><span style="color: #007788; font-weight: bold">int</span> someGlobal <span style="color: #555555">=</span> <span style="color: #FF6600">2</span>;
+<span style="color: #007788; font-weight: bold">int</span><span style="color: #555555">&amp;</span> f() {
+    <span style="color: #006699; font-weight: bold">return</span> someGlobal;
+}
+
+<span style="color: #007788; font-weight: bold">int</span> main() {
+    f() <span style="color: #555555">=</span> <span style="color: #FF6600">3</span>;
+    std<span style="color: #555555">::</span>cout <span style="color: #555555">&lt;&lt;</span> someGlobal <span style="color: #555555">&lt;&lt;</span> std<span style="color: #555555">::</span>endl;
+}
+</pre>
+    </div>
+    <h4>
+     const and lvalues
+    </h4>
+    <p>
+     Things get a little complicated when we start to think about
+     <span class="code">const</span>
+     . As we discussed we cannot assign to
+     <span class="code">const</span>
+     , then how can they be lvalues? and that brings us
+to our first gotcha.
+
+"Modifiable lvalues" are what we are going to refer to the things which are
+modifiable, duh. So, const variable is a "non-modifiable lvalue", it's still an lvalue
+just not a modifiable one.
+    </p>
+    <h4>
+     Conversion between lvalues and rvalues
+    </h4>
+    <p>
+     Now, we have clear boundaries between lvalues (modifiable or non-modifiable) and
+rvalues, but are there scenarios where we convert them to one another. Of
+course there are!
+    </p>
+    <p>
+     The most common way to convert rvalue to lvalue is when you
+are dereferencing a pointer. The pointer value in itself is an rvalue, it's just
+some integer, but combined with
+     <span class="code">*</span>
+     , it becomes an
+lvalue which can be assigned to.
+    </p>
+    <p>
+     And the opposite of this is getting the address of an lvalue, which is a rvalue.
+Also, lvalues are converted to rvalues all the time. Whenever we use a variable on
+the right side of the assignment operator we are using an lvalue as a rvalue.
+    </p>
+    <h4>
+     The mess with temporaries and const
+    </h4>
+    <p>
+     We know that temporaries and constants are rvalues, since they don't have any
+address associated with them. Say we have the following function -
+    </p>
+    <div class="block-code">
+     <pre style="margin: 0; line-height: 125%"><span style="color: #006699; font-weight: bold">class</span> <span style="color: #00AA88; font-weight: bold">MyType</span> {
+<span style="color: #9999FF">private:</span>
+    <span style="color: #007788; font-weight: bold">int</span> x[<span style="color: #FF6600">100000</span>];
+<span style="color: #9999FF">public:</span>
+    MyType() {}
+};
+
+<span style="color: #007788; font-weight: bold">void</span> <span style="color: #CC00FF">f</span>(MyType<span style="color: #555555">&amp;</span> x, MyType<span style="color: #555555">&amp;</span> y, <span style="color: #007788; font-weight: bold">int</span><span style="color: #555555">&amp;</span> z) {
+    <span style="color: #0099FF; font-style: italic">// Some operations on these which do not modify the original values</span>
+}
+</pre>
+    </div>
+    <p>
+     Now, all is fine but we cannot call this function with temporaries or constants
+such as
+     <span class="code">f(MyType(), MyType(), 4);</span>
+     .
+
+The first two arguments are temporaries and the last one is a constant. If you
+try to compile this, the compiler is going to throw an error and this should be
+expected. We are trying to get an lvalue (which is reference in our case) from
+an rvalue, temporary or constant. How can C++ allow this and maintain the
+correctness? It doesn't make any assumption where you are storing the temporary
+or constant and allowing that to be bound to an lvalue is just calling for
+problems down the line.
+    </p>
+    <p>
+     Now, what is the actual problem here that C++ does not allow this behaviour? Is
+it that the arguments are lvalues or that you can modify those? It's the
+possibility that the passed arguments can be modified that C++ does not allow
+temporaries or constants to be passed to the function. So, if we just make the
+arguments unmodifiable, that should be good, right? Indeed it is and the
+following will compile just fine -
+    </p>
+    <div class="block-code">
+     <pre style="margin: 0; line-height: 125%"><span style="color: #007788; font-weight: bold">void</span> <span style="color: #CC00FF">f</span>(MyType <span style="color: #006699; font-weight: bold">const</span><span style="color: #555555">&amp;</span> x, MyType <span style="color: #006699; font-weight: bold">const</span><span style="color: #555555">&amp;</span> y, <span style="color: #007788; font-weight: bold">int</span> <span style="color: #006699; font-weight: bold">const</span><span style="color: #555555">&amp;</span> z) {}
+
+
+<span style="color: #007788; font-weight: bold">int</span> <span style="color: #CC00FF">main</span>() {
+    f(MyType(), MyType(), <span style="color: #FF6600">4</span>);
+}
+</pre>
+    </div>
+   </div>
+   <div class="section">
+    <h3 class="section-title">
+     Rvalue references
+    </h3>
+    <p>
+     Rvalue references were introduced in C++11 for the purpose of solving two
+specific issues -
+    </p>
+    <ul>
+     <li>
+      Move semantics
+     </li>
+     <li>
+      Perfect forwarding
+     </li>
+    </ul>
+    <p>
+     The de facto standard to read about this is
+     <span class="reference link">
+      [7]
+     </span>
+     . If you got half an hour additional to spare, go read that.
+Promise it won't take more than that on a concentrated read.
+    </p>
+    <p>
+     If you are still here, then let us discuss, make sure you get yourself a coffee.
+    </p>
+    <h4>
+     Move semantics
+    </h4>
+    <p>
+     Consider a simple example -
+    </p>
+    <div class="block-code">
+     <pre style="margin: 0; line-height: 125%">
+<span style="color: #006699; font-weight: bold">class</span> <span style="color: #00AA88; font-weight: bold">MyType</span> {
+<span style="color: #9999FF">public:</span>
+  MyType() {
+    std<span style="color: #555555">::</span>cout <span style="color: #555555">&lt;&lt;</span> <span style="color: #CC3300">"Constructor"</span> <span style="color: #555555">&lt;&lt;</span> std<span style="color: #555555">::</span>endl;
+  }
+
+  MyType(<span style="color: #006699; font-weight: bold">const</span> MyType<span style="color: #555555">&amp;</span> other) {
+    std<span style="color: #555555">::</span>cout <span style="color: #555555">&lt;&lt;</span> <span style="color: #CC3300">"Copy Constructor"</span> <span style="color: #555555">&lt;&lt;</span> std<span style="color: #555555">::</span>endl;
+  }
+
+  MyType<span style="color: #555555">&amp;</span> <span style="color: #006699; font-weight: bold">operator</span><span style="color: #555555">=</span>(<span style="color: #006699; font-weight: bold">const</span> MyType<span style="color: #555555">&amp;</span> other) {
+    std<span style="color: #555555">::</span>cout <span style="color: #555555">&lt;&lt;</span> <span style="color: #CC3300">"Copy operator"</span> <span style="color: #555555">&lt;&lt;</span> std<span style="color: #555555">::</span>endl;
+    <span style="color: #006699; font-weight: bold">return</span> <span style="color: #555555">*</span><span style="color: #006699; font-weight: bold">this</span>;
+  }
+
+  <span style="color: #555555">~</span>MyType() {
+    std<span style="color: #555555">::</span>cout <span style="color: #555555">&lt;&lt;</span> <span style="color: #CC3300">"Destructor"</span> <span style="color: #555555">&lt;&lt;</span> std<span style="color: #555555">::</span>endl;
+  }
+};
+
+
+MyType <span style="color: #CC00FF">f</span>() {
+  MyType y;
+  <span style="color: #006699; font-weight: bold">return</span> y;
+}
+
+<span style="color: #007788; font-weight: bold">int</span> <span style="color: #CC00FF">main</span>() {
+  MyType x;
+  x <span style="color: #555555">=</span> f();
+}
+</pre>
+    </div>
+    <p>
+     Compile this using
+     <span class="code">g++ --std=c++03 -fno-elide-constructors ... </span>
+    </p>
+    <p>
+     I am simply creating an object of type
+     <span class="code">MyType</span>
+     in
+     <span class="code">f()</span>
+     and then passing that on to
+     <span class="code">x</span>
+     variable. The flow will be something like -
+    </p>
+    <ol>
+     <li>
+      Inside
+      <span class="code">main</span>
+      : Construct
+      <span class="code">MyType</span>
+      object
+      <span class="code">x</span>
+     </li>
+     <li>
+      Inside
+      <span class="code">f</span>
+      : Construct
+      <span class="code">MyType</span>
+      object
+      <span class="code">y</span>
+     </li>
+     <li>
+      Returning from
+      <span class="code">f</span>
+      : Copy
+      <span class="code">y</span>
+      to the temporary return
+     </li>
+     <li>
+      Returning from
+      <span class="code">f</span>
+      : Destroy
+      <span class="code">x</span>
+     </li>
+     <li>
+      Inside
+      <span class="code">main</span>
+      : Copy temporary return to
+      <span class="code">x</span>
+     </li>
+     <li>
+      Inside
+      <span class="code">main</span>
+      : Destroy temporary
+     </li>
+     <li>
+      Returning from
+      <span class="code">main</span>
+      : Destroy
+      <span class="code">x</span>
+     </li>
+    </ol>
+    <p>
+     This is extremely bad! To create one object from a factory function we did two
+copies and created 3 objects.
+    </p>
+    <p>
+     The issue at hand is that the overloaded copy constructor and operator
+does not allow us to modify the arguments. That's what we established in the
+previous section. But, if we know that those things are just temporaries and will
+be destroyed in just a second, shouldn't we be able to simply move the data
+(supposing the object holds pointers to other heavy objects) from the temporary
+to our object and avoid copying members.
+    </p>
+    <p>
+     This is exactly the problem that rvalue reference allows us to avoid. We can
+overload copy constructor and operator for move semantics, which will allow us
+to move data from one object to another. Note that the objects will still be
+created, just that we will be using move semantic overloads now for copy
+constructor and copy operator.
+    </p>
+    <div class="block-code">
+     <pre style="margin: 0; line-height: 125%"><span style="color: #0099FF; font-style: italic">// Note: Double ampersand means a rvalue reference</span>
+MyType(MyType<span style="color: #555555">&amp;&amp;</span> other) {
+    std<span style="color: #555555">::</span>cout <span style="color: #555555">&lt;&lt;</span> <span style="color: #CC3300">"Move constructor"</span> <span style="color: #555555">&lt;&lt;</span> std<span style="color: #555555">::</span>endl;
+}
+
+MyType<span style="color: #555555">&amp;</span> <span style="color: #006699; font-weight: bold">operator</span><span style="color: #555555">=</span>(MyType<span style="color: #555555">&amp;&amp;</span> other) {
+    std<span style="color: #555555">::</span>cout <span style="color: #555555">&lt;&lt;</span> <span style="color: #CC3300">"Move operator"</span> <span style="color: #555555">&lt;&lt;</span> std<span style="color: #555555">::</span>endl;
+    <span style="color: #006699; font-weight: bold">return</span> <span style="color: #555555">*</span><span style="color: #006699; font-weight: bold">this</span>;
+}
+</pre>
+    </div>
+    <p>
+     After adding these overloads, compile with
+     <span class="code">g++ -std=c++11-fno-elide-constructors ...
+     </span>
+     Now when you run it, you'll see that the copy calls have been replaced with move
+calls. Isn't C++ just wonderful?
+    </p>
+    <h4>
+     But, what is rvalue reference?
+    </h4>
+    <p>
+     We have an rvalue passed into our overloaded operator or constructor or any
+other function for that matter. But, it is a fully qualified variable now with
+its own address, so can it still remain an rvalue? Nope!
+    </p>
+    <p>
+     We need more categories than just lvalues, rvalues and hence they
+were introduced in C++11
+     <span class="sup-reference link">
+      [8]
+     </span>
+     <span class="sup-reference link">
+      [9]
+     </span>
+    </p>
+    <ul>
+     <li>
+      <span class="code">xvalue</span>
+      : This points to an "eXpiring" value,
+        which means something which has reached the end of its lifetime and can be safely moved.
+     </li>
+     <li>
+      <span class="code">lvalue</span>
+      : This definition remains the same,
+        anything which is not const and has an address is an lvalue.
+     </li>
+     <li>
+      <span class="code">glvalue</span>
+      : This is general lvalues and is just
+        a superset including lvalues and xvalues.
+     </li>
+     <li>
+      <span class="code">rvalue</span>
+      : This can be an xvalue, a temporary, a
+        const or anything which is not an lvalue.
+     </li>
+     <li>
+      <span class="code">prvalue</span>
+      : This is pure rvalue, or simply
+        "rvalue - xvalue". So, mostly temporaries and consts.
+     </li>
+    </ul>
+    <p>
+     Based on this, our rvalue reference can now point to xvalue, temporary or const.
+But the question remains, what is rvalue reference itself? To clear this up,
+let's look at the following program -
+    </p>
+    <div class="block-code">
+     <pre style="margin: 0; line-height: 125%"><span style="color: #007788; font-weight: bold">void</span> <span style="color: #CC00FF">h</span>(MyType<span style="color: #555555">&amp;</span> x) {
+    std<span style="color: #555555">::</span>cout <span style="color: #555555">&lt;&lt;</span> <span style="color: #CC3300">"Inside lvalue reference h"</span> <span style="color: #555555">&lt;&lt;</span> std<span style="color: #555555">::</span>endl;
+}
+
+<span style="color: #007788; font-weight: bold">void</span> <span style="color: #CC00FF">h</span>(MyType<span style="color: #555555">&amp;&amp;</span> x) {
+    std<span style="color: #555555">::</span>cout <span style="color: #555555">&lt;&lt;</span> <span style="color: #CC3300">"Inside rvalue reference h"</span> <span style="color: #555555">&lt;&lt;</span> std<span style="color: #555555">::</span>endl;
+}
+
+<span style="color: #007788; font-weight: bold">void</span> <span style="color: #CC00FF">g</span>(MyType<span style="color: #555555">&amp;</span> x) {
+    std<span style="color: #555555">::</span>cout <span style="color: #555555">&lt;&lt;</span> <span style="color: #CC3300">"Inside lvalue reference g"</span> <span style="color: #555555">&lt;&lt;</span> std<span style="color: #555555">::</span>endl;
+    h(x);
+}
+
+<span style="color: #007788; font-weight: bold">void</span> <span style="color: #CC00FF">g</span>(MyType<span style="color: #555555">&amp;&amp;</span> x) {
+    std<span style="color: #555555">::</span>cout <span style="color: #555555">&lt;&lt;</span> <span style="color: #CC3300">"Inside rvalue reference g"</span> <span style="color: #555555">&lt;&lt;</span> std<span style="color: #555555">::</span>endl;
+    h(x);
+}
+
+<span style="color: #007788; font-weight: bold">int</span> <span style="color: #CC00FF">main</span>() {
+    g(MyType());
+}
+</pre>
+    </div>
+    <p>
+     Clearly,
+     <span class="code">g</span>
+     is being called with a temporary, so an
+rvalue and it will go to the right function call. But,
+     <span class="code">g</span>
+     further calls
+     <span class="code">h</span>
+     , now what will
+that call resolve to, the rvalue version of
+     <span class="code">h</span>
+     or the
+lvalue version? Turns out, it resolves to lvalue version of
+     <span class="code">h</span>
+     , because a named rvalue reference is an lvalue by itself.
+This is pretty bad and we should not do this as a temporary object now becomes
+modifiable which leads to undefined behaviour in C++.
+    </p>
+    <p>
+     Before we see how to fix this, let's see a case where a rvalue reference might
+not be named -
+    </p>
+    <div class="block-code">
+     <pre style="margin: 0; line-height: 125%">MyType<span style="color: #555555">&amp;&amp;</span> construct() {
+    ...
+    <span style="color: #006699; font-weight: bold">return</span> MyType();
+}
+
+<span style="color: #007788; font-weight: bold">int</span> main() {
+    MyType a <span style="color: #555555">=</span> construct();
+}
+</pre>
+    </div>
+    <h4>
+     std::move
+    </h4>
+    <p>
+     <span class="code">std::move</span>
+     is introduced for solving this specific
+issue. It maintains the rvalue reference type, or in other words changes an
+lvalue to an rvalue reference type.  Let me say that again CHANGES LVALUE TO
+RVALUE REFERENCE. Ok, lets first fix our previous example -
+    </p>
+    <div class="block-code">
+     <pre style="margin: 0; line-height: 125%"><span style="color: #007788; font-weight: bold">void</span> <span style="color: #CC00FF">g</span>(MyType<span style="color: #555555">&amp;&amp;</span> x) {
+    std<span style="color: #555555">::</span>cout <span style="color: #555555">&lt;&lt;</span> <span style="color: #CC3300">"Inside rvalue reference g"</span> <span style="color: #555555">&lt;&lt;</span> std<span style="color: #555555">::</span>endl;
+    h(std<span style="color: #555555">::</span>move(x));
+}
+</pre>
+    </div>
+    <p>
+     Now, on to the implications of that statement. It can change any lvalue
+to rvalue reference type. This is amazing and scary. Consider this example -
+    </p>
+    <div class="block-code">
+     <pre style="margin: 0; line-height: 125%"><span style="color: #007788; font-weight: bold">int</span> <span style="color: #CC00FF">main</span>() {
+    MyType x;
+    g(x);  <span style="color: #0099FF; font-style: italic">// This calls the lvalue version of g</span>
+    g(std<span style="color: #555555">::</span>move(x));  <span style="color: #0099FF; font-style: italic">// This calls the rvalue version of g</span>
+}
+</pre>
+    </div>
+    <p>
+     This can be used even for stack objects (well all objects are stack objects
+somehow) and after moving x in the above example if we try to access it, that is
+undefined behaviour, and so the scary part. When we issue
+     <span class="code">std::move(x)</span>
+     , we are
+assuring compiler that this is an expiring value, even when it's not.
+    </p>
+    <div class="aside">
+     Aside: Under the hood,
+     <span class="code">std::move</span>
+     is simply
+     <span class="code">static_cast<mytype&&>
+      </mytype&&>
+     </span>
+     .
+    </div>
+    <h4>
+     Lifetime of temporaries
+    </h4>
+    <p>
+     Consider the following code -
+    </p>
+    <div class="block-code">
+     <pre style="margin: 0; line-height: 125%"><span style="color: #007788; font-weight: bold">int</span> <span style="color: #CC00FF">main</span>() {
+    <span style="color: #007788; font-weight: bold">char</span> <span style="color: #006699; font-weight: bold">const</span><span style="color: #555555">*</span> c <span style="color: #555555">=</span> std<span style="color: #555555">::</span>string(<span style="color: #CC3300">"layog"</span>).c_str();
+    <span style="color: #0099FF; font-style: italic">// Use c after this</span>
+}
+</pre>
+    </div>
+    <p>
+     The above code will compile just fine (maybe a compiler warning on latest
+versions, I saw some of them catching this issue now) but will not run fine.
+     <span class="code">std::string("layog")</span>
+     is a temporary which is deleted
+when the full expression has been evaluated, so,
+     <span class="code">c</span>
+     becomes a dangling pointer after the evaluation of the statement. CPP reference
+says this about temporaries lifetime
+     <span class="sup-reference link">
+      [10]
+     </span>
+     -
+    </p>
+    <div class="quote">
+     All temporary objects are destroyed as the last step in evaluating the
+    full-expression that (lexically) contains the point where they were created,
+    and if multiple temporary objects were created, they are destroyed in the
+    order opposite to the order of creation. This is true even if that
+    evaluation ends in throwing an exception.
+    </div>
+    <p>
+     This BTW is an extremely common bug (I don't have reference to back this, but
+have fallen to this quite many times myself). Generally happens when some
+function is returning a
+     <span class="code">std::string</span>
+     as -
+    </p>
+    <div class="block-code">
+     <pre style="margin: 0; line-height: 125%">std<span style="color: #555555">::</span>string f() {
+    <span style="color: #0099FF; font-style: italic">// Forms a new string and returns that</span>
+}
+
+<span style="color: #007788; font-weight: bold">int</span> main() {
+    <span style="color: #007788; font-weight: bold">char</span> <span style="color: #006699; font-weight: bold">const</span><span style="color: #555555">*</span> c <span style="color: #555555">=</span> f().c_str();
+}
+</pre>
+    </div>
+    <h4>
+     Rvalue reference name considered harmful
+    </h4>
+    <p>
+     You should watch
+     <span class="reference link">
+      [11]
+     </span>
+     if you have some additional time.
+
+Consider the following example -
+    </p>
+    <div class="block-code">
+     <pre style="margin: 0; line-height: 125%"><span style="color: #006699; font-weight: bold">template</span><span style="color: #555555">&lt;</span><span style="color: #006699; font-weight: bold">typename</span> T<span style="color: #555555">&gt;</span>
+<span style="color: #007788; font-weight: bold">void</span> f(T <span style="color: #006699; font-weight: bold">const</span><span style="color: #555555">&amp;</span> m) {
+    std<span style="color: #555555">::</span>cout <span style="color: #555555">&lt;&lt;</span> <span style="color: #CC3300">"Called f with const lvalue reference"</span> <span style="color: #555555">&lt;&lt;</span> std<span style="color: #555555">::</span>endl;
+}
+
+<span style="color: #006699; font-weight: bold">template</span><span style="color: #555555">&lt;</span><span style="color: #006699; font-weight: bold">typename</span> T<span style="color: #555555">&gt;</span>
+<span style="color: #007788; font-weight: bold">void</span> f(T<span style="color: #555555">&amp;&amp;</span> m) {
+    std<span style="color: #555555">::</span>cout <span style="color: #555555">&lt;&lt;</span> <span style="color: #CC3300">"Called f with rvalue reference"</span> <span style="color: #555555">&lt;&lt;</span> std<span style="color: #555555">::</span>endl;
+}
+
+<span style="color: #007788; font-weight: bold">int</span> main() {
+    MyType x;
+    <span style="color: #006699; font-weight: bold">const</span> MyType y;
+    f(x); <span style="color: #0099FF; font-style: italic">// 1</span>
+    f(y); <span style="color: #0099FF; font-style: italic">// 2</span>
+    f(MyType()) <span style="color: #0099FF; font-style: italic">// 3</span>
+}
+</pre>
+    </div>
+    <p>
+     After running this, you'll find that only the call 2
+     <span class="code">f(y)</span>
+     resolves to the "f with const lvalue reference".
+Isn't it strange that the call 1
+     <span class="code">f(x)</span>
+     resolves to the
+rvalue reference?
+    </p>
+    <p>
+     And that's why it is dangerous to use the name "rvalue reference" whereas in
+reality this can bind to an lvalue reference as well. Why this is the case will
+be discussed in the next section, but for now the point to note is
+    </p>
+    <ul>
+     <li>
+      if you have a type deduction (like in template for our case)
+     </li>
+     <li>
+      and you have the type of the form
+      <span class="code">T&amp;&amp;</span>
+      (note:
+        just
+      <span class="code">T&amp;&amp;</span>
+      and no other type like
+      <span class="code">const T&amp;&amp;</span>
+      ,
+      <span class="code">T*&amp;&amp;</span>
+      etc)
+     </li>
+    </ul>
+    <p>
+     then you can bind an lvalue to this seemingly rvalue reference.
+    </p>
+    <p>
+     Scott Meyers like to call it "Universal Reference" rather than Rvalue
+reference
+     <span class="sup-reference link">
+      [11]
+     </span>
+     .  So, if both your
+conditions are satisfied, consider them Universal references, rather than rvalue
+references.
+    </p>
+    <h4>
+     Perfect forwarding
+    </h4>
+    <p>
+     Now, why in the hell the standard committee do this atrocious thing? Well, when
+they were designing
+     <span class="code">rvalue references</span>
+     they had two
+goals in mind -
+    </p>
+    <ul>
+     <li>
+      Support move semantics
+     </li>
+     <li>
+      Support perfect forwarding
+     </li>
+    </ul>
+    <p>
+     To understand perfect forwarding consider the following example (don't run it
+yet, but consider it from what is described till now) -
+    </p>
+    <div class="block-code">
+     <pre style="margin: 0; line-height: 125%"><span style="color: #006699; font-weight: bold">template</span><span style="color: #555555">&lt;</span><span style="color: #006699; font-weight: bold">typename</span> T<span style="color: #555555">&gt;</span>
+<span style="color: #007788; font-weight: bold">void</span> f(T <span style="color: #006699; font-weight: bold">const</span> <span style="color: #555555">&amp;</span>) {...}
+
+<span style="color: #006699; font-weight: bold">template</span><span style="color: #555555">&lt;</span><span style="color: #006699; font-weight: bold">typename</span> T<span style="color: #555555">&gt;</span>
+<span style="color: #007788; font-weight: bold">void</span> f(T<span style="color: #555555">&amp;</span>) {...}
+
+<span style="color: #006699; font-weight: bold">template</span><span style="color: #555555">&lt;</span><span style="color: #006699; font-weight: bold">typename</span> T<span style="color: #555555">&gt;</span>
+<span style="color: #007788; font-weight: bold">void</span> f(T<span style="color: #555555">&amp;&amp;</span>) {...}
+</pre>
+    </div>
+    <p>
+     The first template will resolve to any call to a
+     <span class="code">const</span>
+     lvalue reference, the second will resolve to any
+     <span class="code">non-const</span>
+     lvalue reference and lastly, the third will
+resolve to any rvalue reference.  Now, if I skip one of these calls, what will
+happen -
+    </p>
+    <ul>
+     <li>
+      Skipping first template - There is no way I can resolve the
+      <span class="code">const lvalue</span>
+      call anymore.
+     </li>
+     <li>
+      Skipping second template - Now, I can't resolve the
+      <span class="code">non-const lvalue</span>
+      references.
+     </li>
+     <li>
+      Skipping third template - Well, this will break all the rvalue
+        references.
+     </li>
+    </ul>
+    <p>
+     In short, for all the template references in function arguments, you'll need to
+supply all the overloaded versions, which becomes a maintainability nightmare
+for the developer as now you have to provide
+     <span class="code">3<sup>n</sup></span>
+     overloads, where
+     <span class="code">n</span>
+     is the number of templated
+arguments.
+    </p>
+    <p>
+     The standard committee thought, "Hmm, we anyway are introducing this new token
+     <span class="code">&amp;&amp;</span>
+     which we have been calling rvalue references, what if it can also resolve
+to lvalues under certain conditions", and lo and behold, the collapsing rules
+were invented. What these rules allow is to let
+     <strike>
+      rvalue
+     </strike>
+     universal references
+refer to both lvalue and rvalue. So, in our case the third
+template is enough to resolve the other two and we don't need to provide the
+overloads. The rules are as follows -
+    </p>
+    <ul>
+     <li>
+      <span class="code">T&amp;&amp; &amp;&amp;</span>
+      : resolves to
+      <span class="code">T&amp;&amp;</span>
+     </li>
+     <li>
+      <span class="code">T&amp; &amp;&amp;</span>
+      : resolves to
+      <span class="code">T&amp;</span>
+     </li>
+     <li>
+      <span class="code">T&amp;&amp; &amp;</span>
+      : resolves to
+      <span class="code">T&amp;</span>
+     </li>
+     <li>
+      <span class="code">T&amp; &amp;</span>
+      : resolves to
+      <span class="code">T&amp;</span>
+     </li>
+    </ul>
+    <p>
+     In short, as Stephan T. Lavavej likes to call "lvalue references are infectious".
+    </p>
+    <p>
+     But, now like we saw in the case of move semantics, we will lose the information
+about the original object, whether it was an lvalue or a rvalue. So, to aid in
+that we have
+     <span class="code">std::forward</span>
+     which will recover the original value category of
+the object. So, our final version of the
+     <span class="code">f</span>
+     function will be -
+    </p>
+    <div class="block-code">
+     <pre style="margin: 0; line-height: 125%"><span style="color: #006699; font-weight: bold">template</span><span style="color: #555555">&lt;</span><span style="color: #006699; font-weight: bold">typename</span> T<span style="color: #555555">&gt;</span>
+<span style="color: #007788; font-weight: bold">void</span> f(T<span style="color: #555555">&amp;&amp;</span> x) {
+    h(std<span style="color: #555555">::</span>forward<span style="color: #555555">&lt;</span>T<span style="color: #555555">&gt;</span>(x));
+}
+</pre>
+    </div>
+    <p>
+     This is known as perfect forwarding. In case of
+     <span class="code">rvalue</span>
+     reference
+     <span class="code">T</span>
+     will resolve to
+     <span class="code">MyType</span>
+     and in case of
+     <span class="code">lvalue</span>
+     reference
+     <span class="code">T</span>
+     will resolve to
+     <span class="code">MyType&amp;</span>
+     and collapsing rules will make
+     <span class="code">MyType&amp; &amp;&amp;</span>
+     to
+     <span class="code">MyType&amp;</span>
+     .
+    </p>
+    <div class="aside">
+     Note: You cannot declare object as
+     <span class="code">MyType&amp;&amp; &amp;</span>
+     or any other combination. You cannot
+    explicitly invoke a type collapsing rule, and trying to do so will unleash
+    compiler's wrath.
+    </div>
+    <h4>
+     Places where type collapsing happens
+    </h4>
+    <p>
+     There are basically 4 ways compiler does type collapsing -
+    </p>
+    <ul>
+     <li>
+      template deduction: This was the example presented above
+     </li>
+     <li>
+      <span class="code">auto</span>
+      deduction:
+      <span class="code">
+       auto&amp;&amp; x = y
+      </span>
+      is lvalue
+        but
+      <span class="code">auto&amp;&amp; x = MyType()</span>
+      is rvalue
+     </li>
+     <li>
+      <span class="code">typedef</span>
+      and
+      <span class="code">using</span>
+      :
+      <span class="code">typedef MyType&amp;&amp; rref</span>
+      or
+      <span class="code">using rref = MyType&amp;&amp;</span>
+      , then
+      <ul style="margin-top: 0; margin-bottom: 0.3em">
+       <li>
+        <span class="code">rref x = MyType()</span>
+        : rvalue reference
+       </li>
+       <li>
+        <span class="code">rref&amp; y = x</span>
+        : Dumb thing to do, but lvalue reference
+       </li>
+      </ul>
+     </li>
+     <li>
+      <span class="code">decltype</span>
+      :
+      <span class="code">MyType x</span>
+      , then
+      <ul style="margin-top: 0; margin-bottom: 0.3em">
+       <li>
+        <span class="code">decltype(x)&amp;&amp; y = std::move(x)</span>
+        : rvalue reference
+       </li>
+       <li>
+        <span class="code">decltype((x))&amp;&amp; y = std::move(x)</span>
+        : lvalue reference
+       </li>
+      </ul>
+     </li>
+    </ul>
+   </div>
+   <div class="section">
+    <h3 class="section-title">
+     Copy elision
+    </h3>
+    <p>
+     Now, that we understand the various ways "we" can control the copy/move of
+objects, let's understand how compiler even trumps us and writes much better
+code than we can from the available tools
+     <span class="sup-reference link">
+      [12]
+     </span>
+     .
+    </p>
+    <h4>
+     Return Value Optimization
+    </h4>
+    <p>
+     Continuing our example of
+     <span class="code">MyType</span>
+     and create another function which
+constructs the object for us
+    </p>
+    <div class="block-code">
+     <pre style="margin: 0; line-height: 125%">MyType <span style="color: #CC00FF">f</span>() {
+    <span style="color: #006699; font-weight: bold">return</span> MyType();
+}
+
+<span style="color: #007788; font-weight: bold">int</span> <span style="color: #CC00FF">main</span>() {
+    MyType x <span style="color: #555555">=</span> f();
+}
+</pre>
+    </div>
+    <p>
+     Compile this program in two different ways -
+    </p>
+    <ul>
+     <li>
+      <span class="code">g++ -std=c++11 -fno-elide-constructors ... </span>
+     </li>
+     <li>
+      <span class="code">g++ -std=c++11 ... </span>
+     </li>
+    </ul>
+    <p>
+     When you run both the program, you'll notice that in the second version only one
+object is ever created and there is no need to copy/move the object around. This
+is due to "return value optimization" enabled by "copy elision". What this
+is that when a compiler recognizes that you are returning by value and the
+returned value is a temporary, why go through all the hassle of creating a
+temporary and why not simply construct the object at the address of x.
+    </p>
+    <h4>
+     Named Return Value Optimization
+    </h4>
+    <p>
+     This is exactly same as above, just the construction of object doesn't need to
+be in the return statement and can be constructed via some local variable as -
+    </p>
+    <div class="block-code">
+     <pre style="margin: 0; line-height: 125%">MyType <span style="color: #CC00FF">f</span>() {
+    MyType y;
+    <span style="color: #006699; font-weight: bold">return</span> y;
+}
+</pre>
+    </div>
+    <p>
+     Here we are constructing the object first and then returning it, making it named
+return value. The optimization done is same, but this is a bit more difficult to
+recognize for the compilers (though modern compilers are brilliant and does this
+most of the time).
+    </p>
+    <div class="aside">
+     Aside: How this is actually achieved is explored by
+     <span class="reference link">
+      [13]
+     </span>
+     a bit. Looking at generated assembly,
+    it seems that the compiler passes a reference of the actual object to the
+    function and then constructs the object at the address of the actual
+object.
+    </div>
+   </div>
+   <div class="section">
+    <h3 class="section-title">
+     On prvalue
+    </h3>
+    <p>
+     Till C++14, there was no concept of
+     <span class="code">prvalue</span>
+     , sure the
+standard mentions it, but a true prvalue never existed. Any object that you
+create as a const or temporary was immediately converted to an xvalue and then
+moved around the code using the move semantics. This was generally elided by the
+compilers so temporaries are never even created in the first place but the point
+still remains.
+    </p>
+    <p>
+     From C++17 onwards, the standard guarantees that prvalues are actually prvalues
+and a prvalue won't materialize until certain conditions are met
+     <span class="sup-reference link">
+      [14]
+     </span>
+     .  Since, prvalues do not materialize they
+are just an elusive idea of some object which will be created after you assign
+them to some variable
+     <span class="sup-reference link">
+      [15]
+     </span>
+     . Consider -
+    </p>
+    <div class="block-code">
+     <pre style="margin: 0; line-height: 125%">std<span style="color: #555555">::</span>string a() {
+    <span style="color: #006699; font-weight: bold">return</span> <span style="color: #CC3300">"a pony"</span>;
+}
+
+std<span style="color: #555555">::</span>string b() {
+    <span style="color: #006699; font-weight: bold">return</span> a();
+}
+
+<span style="color: #007788; font-weight: bold">int</span> main() {
+    <span style="color: #006699; font-weight: bold">auto</span> x <span style="color: #555555">=</span> b();
+}
+</pre>
+    </div>
+    <p>
+     In case of copy elision, the compiler pass the variable
+     <span class="code">x</span>
+     to
+     <span class="code">b</span>
+     and then further to
+     <span class="code">a</span>
+     where that is constructued using the string "a
+pony". But, what C++17 guarantees is that "a pony" isn't materialized in
+     <span class="code">b</span>
+     then
+     <span class="code">neither</span>
+     in
+     <span class="code">a</span>
+     but finally in
+     <span class="code">main</span>
+     . So acc. to
+C++17 this is equivalent to
+     <span class="code">auto x("a pony")</span>
+     ;
+    </p>
+   </div>
+   <div class="section">
+    <h3 class="section-title">
+     Epilogue - Trust compilers
+    </h3>
+    <p>
+     Watch
+     <span class="reference link">
+      [16]
+     </span>
+     if you got an hour, it truely is a wonderful talk.
+    </p>
+    <p>
+     The problem that
+     <span class="reference link">
+      [13]
+     </span>
+     faced was that the
+author was trying to do something like -
+    </p>
+    <div class="block-code">
+     <pre style="margin: 0; line-height: 125%">MyType <span style="color: #CC00FF">f</span>() {
+    <span style="color: #006699; font-weight: bold">return</span> MyType();
+}
+
+<span style="color: #007788; font-weight: bold">int</span> <span style="color: #CC00FF">main</span>() {
+    MyType x <span style="color: #555555">=</span> std<span style="color: #555555">::</span>move(f());
+}
+</pre>
+    </div>
+    <p>
+     This looks fine but that
+     <span class="code">std::move</span>
+     snatches the opportunity from the compiler
+to optimize this code to the fullest. The
+     <span class="code">std::move</span>
+     converts an lvalue to an
+rvalue reference which the compiler unfortunately have to honor. So, if this
+wasn't there, the compiler will just create one object due to (N)RVO, but since
+we are explicitly moving the object the compiler now have to create atleast two
+objects, and hence the degradation in performance.
+    </p>
+    <div class="aside">
+     NOTE: I was using
+     <span class="code">-std=c++11</span>
+     because it is now compulsory for compilers to do
+    RVO in C++17
+     <span class="sup-reference link">
+      [17]
+     </span>
+     (partially true, check the "On prvalue" section above) and the
+demo wouldn't have been possible. I even heard that they are trying to make NRVO
+compulsory in C++20
+     <span class="sup-reference link">
+      [18]
+     </span>
+     .
+    </div>
+   </div>
+   <div class="references">
+    <hr/>
+    <h3>
+     References
+    </h3>
+    <ol>
+     <li>
+      <a href="https://www.sourcetrail.com/blog/const_friend_or_foe_in_cpp/">
+       Const - Friend or Foe in C++?
+       <p class="authors">
+        Malte Langkabel
+       </p>
+      </a>
+     </li>
+     <li>
+      <a href="https://isocpp.org/wiki/faq/const-correctness">
+       Const Correctness
+       <p class="authors">
+       </p>
+      </a>
+     </li>
+     <li>
+      <a href="https://en.cppreference.com/w/cpp/language/cv">
+       cv type qualifiers
+       <p class="authors">
+       </p>
+      </a>
+     </li>
+     <li>
+      <a href="https://mariusbancila.ro/blog/2018/11/23/join-the-east-const-revolution/">
+       Join the East Const revolution!
+       <p class="authors">
+        Marius Bancila
+       </p>
+      </a>
+     </li>
+     <li>
+      <a href="http://slashslash.info/2018/02/a-foolish-consistency/">
+       A Foolish Consistency
+       <p class="authors">
+        Jon Kalb
+       </p>
+      </a>
+     </li>
+     <li>
+      <a href="https://eli.thegreenplace.net/2011/12/15/understanding-lvalues-and-rvalues-in-c-and-c">
+       Understanding lvalues and rvalues in C and C++
+       <p class="authors">
+        Eli Bendersky
+       </p>
+      </a>
+     </li>
+     <li>
+      <a href="http://thbecker.net/articles/rvalue_references/section_01.html">
+       C++ Rvalue References Explained
+       <p class="authors">
+        Thomas Becker
+       </p>
+      </a>
+     </li>
+     <li>
+      <a href="https://en.cppreference.com/w/cpp/language/value_category">
+       Value Categories
+       <p class="authors">
+       </p>
+      </a>
+     </li>
+     <li>
+      <a href="https://stackoverflow.com/questions/3601602/what-are-rvalues-lvalues-xvalues-glvalues-and-prvalues">
+       What are rvalues, lvalues, xvalues, glvalues, and prvalues?
+       <p class="authors">
+       </p>
+      </a>
+     </li>
+     <li>
+      <a href="https://en.cppreference.com/w/cpp/language/lifetime">
+       Lifetime
+       <p class="authors">
+       </p>
+      </a>
+     </li>
+     <li>
+      <a href="https://channel9.msdn.com/Shows/Going+Deep/Cpp-and-Beyond-2012-Scott-Meyers-Universal-References-in-cpp11">
+       C++ and Beyond 2012: Scott Meyers - Universal References in C++11
+       <p class="authors">
+        Scott Meyers
+       </p>
+      </a>
+     </li>
+     <li>
+      <a href="https://stackoverflow.com/a/12953150">
+       What are copy elision and return value optimization?
+       <p class="authors">
+       </p>
+      </a>
+     </li>
+     <li>
+      <a href="https://pankajraghav.com/2020/08/16/RVO.html">
+       But I was helping the compiler!
+       <p class="authors">
+        Pankaj Raghav
+       </p>
+      </a>
+     </li>
+     <li>
+      <a href="https://en.cppreference.com/w/cpp/language/implicit_conversion#Temporary_materialization">
+       Temporary materialization
+       <p class="authors">
+       </p>
+      </a>
+     </li>
+     <li>
+      <a href="https://blog.tartanllama.xyz/guaranteed-copy-elision/">
+       Guaranteed Copy Elision Does Not Elide Copies
+       <p class="authors">
+        Sy Brand
+       </p>
+      </a>
+     </li>
+     <li>
+      <a href="https://www.youtube.com/watch?v=w0sz5WbS5AM">
+       KEYNOTE: What Everyone Should Know About How Amazing Compilers Are - Matt Godbolt [C++ on Sea 2019]
+       <p class="authors">
+        Matt Godbolt
+       </p>
+      </a>
+     </li>
+     <li>
+      <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/p0135r0.html">
+       Guaranteed copy elision through simplified value categories
+       <p class="authors">
+        Richard Smith
+       </p>
+      </a>
+     </li>
+     <li>
+      <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p2025r0.html">
+       Guaranteed copy elision for named return objects
+       <p class="authors">
+        Anton Zhilin
+       </p>
+      </a>
+     </li>
+    </ol>
+   </div>
+  </div>
+ </body>
+</html>

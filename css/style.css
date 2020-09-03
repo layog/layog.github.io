@@ -13,8 +13,10 @@ body {
     text-decoration: none;
 }
 
-p {
+p, .article ul, .article ol {
     font-size: 1.1rem;
+    margin-top: .6em;
+    margin-bottom: .6em;
 }
 
 ::selection {
@@ -76,18 +78,76 @@ ul.taglist:before {
     font-weight: bold;
 }
 
-/* Article specific settings */
-.code {
-    background-color: #fef6f5;
+/* TOC settings */
+#toc {
+    border: 3px solid #E8E8E8;
+    padding: 2px 10px;
+    border-radius: 3px;
+    background-color: #FEF6F5;
 }
 
-span.reference {
-    font-size: 80%;
+.sectionlist > li {
+    margin-bottom: 0.4em;
+}
+
+ul.subsectionlist {
+    margin-top: 0;
+}
+
+.section-title, .summary {
+    margin-top: 1.0em;
+    margin-bottom: 0.8em;
+}
+
+/* Article specific settings */
+.article h4 {
+    margin-top: 0.8em;
+    margin-bottom: 0.4em;
+}
+
+.quote {
+    padding-left: 2rem;
+    padding-right: 2rem;
+    font-style: italic;
+    font-size: 1.1rem;
+}
+
+.code {
+    border: 1px solid #E8E8E8;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background-color: #FEF6F5;
+}
+
+.block-code, .aside {
+    overflow: auto;
+    width: auto;
+    border: solid gray;
+    padding: .2em .6em;
+    margin-bottom: .6em;
+}
+
+.block-code {
+    background-color: #FEF6F5;
+    border-width: .1em .1em .1em .6em;
+}
+
+.aside {
+    border-width: .1em .1em .1em .1em;
+}
+
+/* Reference settings */
+span.sup-reference {
+    font-size: 70%;
     vertical-align: super;
 }
 
 p.authors {
     display: none;
+}
+
+.references {
+    margin-top: 3em;
 }
 
 /* Tags on tags page setting */
